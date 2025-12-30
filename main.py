@@ -348,78 +348,28 @@ def show_results(chat_id):
 
     bot.send_message(chat_id, result_text, parse_mode='Markdown')
 
-    # Предложение премиум контента
-    premium_text = """
-🎊 *ХОЧЕШЬ ЕЩЁ БОЛЬШЕ ПОЛЕЗНОЙ ЛЕКСИКИ?*
+    # Предложение бесплатного мини-урока
+    lesson_text = """
+🎁 *ПРИГЛАШАЮ ТЕБЯ В МОЙ ЗАКРЫТЫЙ ТГ КАНАЛ С МИНИ-УРОКОМ ПО БЫТОВОЙ ЛЕКСИКЕ!*
 
-Присоединяйся к моему *ЗАКРЫТОМУ ТЕЛЕГРАММ КАНАЛУ!*
+Там ты найдёшь:
+📚 Полезную лексику для повседневного общения
+✏️ Увлекательные упражнения для закрепления
+📎 Дополнительные материалы для самостоятельного изучения
 
-*Темы, которые уже ждут тебя:*
-☀️ Summer vocabulary
-🏖 Beach and vacation
-🧹 Cleaning routines
-🚽 Toilet and bathroom
-🧖🏻‍♀️ Personal hygiene
-🩸 Period and health
-💅🏻 Beauty and self-care
-📚 Education and learning
-🍽 Kitchen tools and equipment
+Всё это абсолютно *БЕСПЛАТНО*! 
 
-*Что ты получаешь:*
-🎯 70+ слов и выражений по каждой теме
-📝 Практические примеры
-✅ Тесты и упражнения
-📚 Подборка материалов
-🔄 *ПОЖИЗНЕННЫЙ ДОСТУП*
-
-💸 *Всего 690 рублей*
-
-👇 *Нажми кнопку, чтобы узнать как получить доступ:*
+👇 *Нажми на кнопку, чтобы присоединиться и забрать свой мини-урок:*
     """
 
     markup = types.InlineKeyboardMarkup()
-    premium_button = types.InlineKeyboardButton(
-        '💎 ПОЛУЧИТЬ ПОЛНЫЙ ДОСТУП',
-        callback_data='get_premium_info'
+    lesson_button = types.InlineKeyboardButton(
+        '🎯 ЗАБРАТЬ МИНИ-УРОК',
+        url='https://t.me/+7TMGyqZEYEFiNmUy'
     )
-    markup.add(premium_button)
+    markup.add(lesson_button)
 
-    bot.send_message(chat_id, premium_text, reply_markup=markup, parse_mode='Markdown')
-
-@bot.callback_query_handler(func=lambda call: call.data == 'get_premium_info')
-def handle_premium_info(call):
-    chat_id = call.message.chat.id
-
-    premium_info = """
-💫 *ОФОРМЛЕНИЕ ДОСТУПА*
-
-Для получения доступа к премиум каналу:
-
-1. *Перейдите по ссылке для оплаты:*
-   https://payform.ru/ah8YSST/
-
-2. *Заполните форму оплаты:*
-   - Укажите ваше имя и email
-   - Оплатите 690 рублей
-
-3. *После успешной оплаты:*
-   - Ссылка на закрытый канал придет на указанную почту
-   - Если возникли проблемы - напишите в поддержку
-    """
-
-    markup = types.InlineKeyboardMarkup()
-    pay_button = types.InlineKeyboardButton(
-        '💳 ОПЛАТИТЬ 690₽',
-        url='https://payform.ru/ah8YSST/'
-    )
-    support_button = types.InlineKeyboardButton(
-        '💬 НАПИСАТЬ В ПОДДЕРЖКУ',
-        url='https://t.me/christie_cheers'
-    )
-    markup.add(pay_button)
-    markup.add(support_button)
-
-    bot.send_message(chat_id, premium_info, reply_markup=markup, parse_mode='Markdown')
+    bot.send_message(chat_id, lesson_text, reply_markup=markup, parse_mode='Markdown')
 
 @bot.message_handler(func=lambda message: True)
 def handle_other_messages(message):
