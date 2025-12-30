@@ -25,6 +25,11 @@ API_TOKEN = os.environ.get('BOT_TOKEN', '8381821681:AAEj3PTdkut5vSWR-BWtrXfdOmnV
 bot = telebot.TeleBot(API_TOKEN)
 user_data = {}
 
+# ID канала для проверки подписки
+CHANNEL_USERNAME = '@christiecheers'
+CHANNEL_ID = -1002044718119  
+
+# Список вопросов (только 1, 4, 6, 9, 10)
 questions = [
     {
         'question': 'Что значит "pitch" в разговорной речи?',
@@ -32,39 +37,14 @@ questions = [
         'correct_answer': 2
     },
     {
-        'question': 'Какая фраза звучит естественнее, если хочешь протереть стол?',
-        'options': ['I removed streaks from the table.', 'I wiped the table clean.', 'I cleaned up streaks.'],
-        'correct_answer': 1
-    },
-    {
-        'question': 'Выбери естественное выражение после уборки:',
-        'options': ['Everything is sparkling!', 'Everything shines like a diamond!', 'Everything is bright.'],
-        'correct_answer': 0
-    },
-    {
         'question': 'Что значит "get moldy"?',
         'options': ['Намокнуть', 'Покрыться плесенью', 'Превратиться в крошки'],
         'correct_answer': 1
     },
     {
-        'question': 'Что сказать, если сожгла волосы плойкой?',
-        'options': ['I singed my hair with a curling iron.', 'I burned my hair with a hair straightener.', 'I fried my hair.'],
-        'correct_answer': 0
-    },
-    {
         'question': 'Что сказать, если ноготь слегка откололся?',
         'options': ['My nail broke.', 'My nail fell.', 'My nail chipped.'],
         'correct_answer': 2
-    },
-    {
-        'question': 'Выбери естественное выражение:',
-        'options': ['My hair is frizzy today.', 'My hair is electric today.', 'My hair is wild today.'],
-        'correct_answer': 0
-    },
-    {
-        'question': 'Что значит "razor burn"?',
-        'options': ['Ожог от солнца', 'Раздражение от бритвы', 'След от утюга'],
-        'correct_answer': 1
     },
     {
         'question': 'Выбери правильное выражение:',
@@ -78,47 +58,140 @@ questions = [
     }
 ]
 
+def check_subscription(user_id):
+    """Проверяет, подписан ли пользователь на канал"""
+    try:
+        member = bot.get_chat_member(CHANNEL_ID, user_id)
+        return member.status in ['member', 'administrator', 'creator']
+    except Exception as e:
+        print(f"Ошибка проверки подписки: {e}")
+        return False
+
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
-    user_data[message.chat.id] = {
+    user_id = message.from_user.id
+    chat_id = message.chat.id
+    
+    # Очищаем предыдущие данные пользователя
+    user_data[chat_id] = {
         'current_question': 0,
         'score': 0,
-        'answers': []
+        'answers': [],
+        'agreed_to_terms': False
     }
 
     welcome_text = """
-🎓 *Добро пожаловать в English Test Bot!* 🎓
-
-━━━━━━━━━━━━━━━━━
 👋 *Привет! Меня зовут Кристина*
-━━━━━━━━━━━━━━━━━
 
 Я репетитор по английскому и автор нескольких каналов, где помогаю людям уверенно говорить на английском в повседневных ситуациях
 
 📊 *Хочешь проверить, насколько хорошо ты знаешь бытовую лексику?*
 
-✅ Пройди короткий тест из 10 вопросов
-⏱ Это займёт меньше 2 минут!
-🎯 Узнай свой реальный уровень
-
-*Проверь, насколько свободно ты ориентируешься в английском для:*
-🏠 Домашних дел и уборки
-💅 Ухода за собой и гигиены
-🍽 Повседневных ситуаций
-🛒 Бытовых моментов
-
-*После прохождения теста ты получишь МИНИ УРОК В ПОДАРОК по быту!*
-
-👇 *Жми "НАЧАТЬ ТЕСТ" и узнай, насколько твой английский приближен к реальной жизни!*
+Чтобы начать тест, необходимо подписаться на мой канал: https://t.me/christiecheers
     """
 
-    markup = types.InlineKeyboardMarkup()
-    start_test_button = types.InlineKeyboardButton('🚀 НАЧАТЬ ТЕСТ', callback_data='start_test')
-    markup.add(start_test_button)
+    markup = types.InlineKeyboardMarkup(row_width=1)
+    subscribe_button = types.InlineKeyboardButton(
+        '📢 ПОДПИСАТЬСЯ НА КАНАЛ', 
+        url='https://t.me/christiecheers'
+    )
+    check_button = types.InlineKeyboardButton(
+        '✅ Я ПОДПИСАЛСЯ, ПРОВЕРИТЬ', 
+        callback_data='check_subscription'
+    )
+    markup.add(subscribe_button, check_button)
 
     bot.send_message(
-        message.chat.id,
+        chat_id,
         welcome_text,
+        reply_markup=markup,
+        parse_mode='Markdown'
+    )
+
+@bot.callback_query_handler(func=lambda call: call.data == 'check_subscription')
+def check_subscription_callback(call):
+    chat_id = call.message.chat.id
+    user_id = call.from_user.id
+    
+    if check_subscription(user_id):
+        # Пользователь подписан, запрашиваем согласие
+        agreement_text = """
+📋 *СОГЛАСИЕ НА ОБРАБОТКУ ДАННЫХ*
+
+Для участия в тесте необходимо ваше согласие на обработку данных.
+
+*Что мы обрабатываем:*
+• Ваш Telegram ID
+• Результаты теста
+• Ответы на вопросы
+
+*Как мы используем данные:*
+✅ Только для работы теста
+✅ Не передаем третьим лицам
+✅ Храним в зашифрованном виде
+
+[Условия соглашения](https://drive.google.com/file/d/1qmFvcVHV2mO58LFdFQMwFFvPKjLT54ga/view?usp=sharing)
+        """
+        
+        markup = types.InlineKeyboardMarkup()
+        agree_button = types.InlineKeyboardButton(
+            '✅ ДАЮ СОГЛАСИЕ', 
+            callback_data='agree_to_terms'
+        )
+        markup.add(agree_button)
+        
+        bot.edit_message_text(
+            chat_id=chat_id,
+            message_id=call.message.message_id,
+            text=agreement_text,
+            reply_markup=markup,
+            parse_mode='Markdown'
+        )
+    else:
+        bot.answer_callback_query(
+            call.id,
+            "❌ Вы не подписаны на канал. Пожалуйста, подпишитесь и попробуйте снова.",
+            show_alert=True
+        )
+
+@bot.callback_query_handler(func=lambda call: call.data == 'agree_to_terms')
+def agree_to_terms(call):
+    chat_id = call.message.chat.id
+    
+    if chat_id not in user_data:
+        user_data[chat_id] = {
+            'current_question': 0,
+            'score': 0,
+            'answers': [],
+            'agreed_to_terms': True
+        }
+    else:
+        user_data[chat_id]['agreed_to_terms'] = True
+    
+    # Начинаем тест
+    user_data[chat_id]['current_question'] = 0
+    user_data[chat_id]['score'] = 0
+    user_data[chat_id]['answers'] = []
+    
+    start_test_text = """
+✅ *Отлично! Вы успешно подписаны и дали согласие.*
+
+Теперь давайте начнем тест! Вам предстоит ответить на 5 вопросов по бытовой лексике.
+
+👇 *Готовы начать?*
+    """
+    
+    markup = types.InlineKeyboardMarkup()
+    start_test_button = types.InlineKeyboardButton(
+        '🚀 НАЧАТЬ ТЕСТ', 
+        callback_data='start_test'
+    )
+    markup.add(start_test_button)
+    
+    bot.edit_message_text(
+        chat_id=chat_id,
+        message_id=call.message.message_id,
+        text=start_test_text,
         reply_markup=markup,
         parse_mode='Markdown'
     )
@@ -126,14 +199,26 @@ def send_welcome(message):
 @bot.callback_query_handler(func=lambda call: call.data == 'start_test')
 def start_test(call):
     chat_id = call.message.chat.id
-
-    if chat_id not in user_data:
-        user_data[chat_id] = {
-            'current_question': 0,
-            'score': 0,
-            'answers': []
-        }
-
+    user_id = call.from_user.id
+    
+    # Проверяем подписку еще раз
+    if not check_subscription(user_id):
+        bot.answer_callback_query(
+            call.id,
+            "❌ Вы отписались от канала. Пожалуйста, подпишитесь снова.",
+            show_alert=True
+        )
+        return
+    
+    # Проверяем согласие
+    if chat_id not in user_data or not user_data[chat_id].get('agreed_to_terms', False):
+        bot.answer_callback_query(
+            call.id,
+            "❌ Вы не дали согласие на обработку данных.",
+            show_alert=True
+        )
+        return
+    
     send_question(chat_id)
 
 def send_question(chat_id):
@@ -180,9 +265,19 @@ def send_question(chat_id):
 @bot.callback_query_handler(func=lambda call: call.data.startswith('answer_'))
 def handle_answer(call):
     chat_id = call.message.chat.id
+    user_id = call.from_user.id
 
     if chat_id not in user_data:
         bot.answer_callback_query(call.id, "❌ Начните тест заново: /start")
+        return
+
+    # Проверяем подписку перед каждым ответом
+    if not check_subscription(user_id):
+        bot.answer_callback_query(
+            call.id,
+            "❌ Вы отписались от канала. Пожалуйста, подпишитесь снова.",
+            show_alert=True
+        )
         return
 
     user_state = user_data[chat_id]
@@ -224,15 +319,15 @@ def show_results(chat_id):
         level = "🎉 ОТЛИЧНО!"
         message = "Ты прекрасно ориентируешься в бытовой лексике!"
         emoji = "🌟"
-    elif score >= total_questions * 0.8:
+    elif score >= total_questions * 0.8:  # 4 из 5
         level = "💪 ОЧЕНЬ ХОРОШО!"
         message = "Отличный результат! Почти идеально!"
         emoji = "✨"
-    elif score >= total_questions * 0.6:
+    elif score >= total_questions * 0.6:  # 3 из 5
         level = "📊 ХОРОШО!"
         message = "Солидный запас слов, но есть куда расти!"
         emoji = "📚"
-    elif score >= total_questions * 0.4:
+    elif score >= total_questions * 0.4:  # 2 из 5
         level = "🎯 НЕПЛОХО!"
         message = "Базовый уровень есть, но нужно практиковаться!"
         emoji = "💪"
@@ -244,10 +339,8 @@ def show_results(chat_id):
     result_text = f"""
 {emoji} *ТЕСТ ЗАВЕРШЁН!*
 
-━━━━━━━━━━━━━━━━━
 📊 *ТВОЙ РЕЗУЛЬТАТ:*
 {level}
-━━━━━━━━━━━━━━━━━
 
 ✅ *Правильных ответов:* {score}/{total_questions}
 {message}
@@ -255,167 +348,11 @@ def show_results(chat_id):
 
     bot.send_message(chat_id, result_text, parse_mode='Markdown')
 
-    # Сразу предлагаем мини-урок после теста
-    lesson_text = """
-🎁 *БОНУС ДЛЯ ТЕБЯ!*
-
-━━━━━━━━━━━━━━━━━
-🚀 *БЕСПЛАТНЫЙ МИНИ-УРОК*
-━━━━━━━━━━━━━━━━━
-
-*Прокачай свой английский для кулинарии и не только!*
-
-👇 *Нажми кнопку, чтобы получить мини-урок:*
-    """
-
-    markup = types.InlineKeyboardMarkup()
-    mini_lesson_button = types.InlineKeyboardButton(
-        '🍽 ПОЛУЧИТЬ МИНИ-УРОК',
-        callback_data='get_mini_lesson'
-    )
-    markup.add(mini_lesson_button)
-
-    bot.send_message(chat_id, lesson_text, reply_markup=markup, parse_mode='Markdown')
-
-@bot.callback_query_handler(func=lambda call: call.data == 'get_mini_lesson')
-def send_mini_lesson(call):
-    chat_id = call.message.chat.id
-
-    # Список слов
-    vocabulary_text = """
-📚 *МИНИ-УРОК: КУЛИНАРНАЯ ЛЕКСИКА*
-
-🍽 *Вкусы и текстура:*
-▪️ zesty — с ярким вкусом (цитрусовый, пикантный)
-▪️ tangy — с лёгкой кислинкой
-▪️ crunchy on the outside, soft inside — хрустящий снаружи, мягкий внутри
-▪️ melt-in-your-mouth — тающий во рту
-▪️ robust — насыщенный, богатый вкус
-▪️ pungent — резкий, острый (например, чеснок)
-▪️ fluffy — пышный, воздушный
-▪️ creamy — сливочный, кремовый
-▪️ bland — безвкусный, пресный
-▪️ smooth — гладкий, однородный
-▪️ sour — кислый
-
-🔪 *Глаголы (действия):*
-▪️ drizzle — сбрызнуть, полить сверху
-▪️ fold in — аккуратно вмешать
-▪️ sear — обжарить до корочки
-▪️ marinate — мариновать
-▪️ zest — натереть цедру
-▪️ whip up — приготовить на скорую руку
-▪️ whisk up - взбить
-▪️ toss — перемешать (салат)
-▪️ peel — почистить
-▪️ chop nuts — порезать / покрошить
-▪️ cool off — остыть, остудить
-▪️ plate everything — выложить всё на тарелку
-
-🥣 *Существительные и выражения:*
-▪️ cutting board — разделочная доска
-▪️ leftovers — остатки еды
-▪️ clove (garlic) — зубчик чеснока
-▪️ grater — тёрка
-▪️ skewer — шпажка
-▪️ meal prepping — подготовка еды заранее
-▪️ heaping amount of — с горкой (например, ложка с горкой)
-    """
-
-    bot.send_message(chat_id, vocabulary_text, parse_mode='Markdown')
-
-    # Кнопка для перехода к упражнениям
-    exercises_text = """
-🎯 *Отлично! Теперь закрепим знания на практике*
-
-👇 *Переходи к упражнениям:*
-    """
-
-    markup = types.InlineKeyboardMarkup()
-    exercises_button = types.InlineKeyboardButton(
-        '📝 ПЕРЕЙТИ К УПРАЖНЕНИЯМ',
-        callback_data='get_exercises'
-    )
-    markup.add(exercises_button)
-
-    bot.send_message(chat_id, exercises_text, reply_markup=markup, parse_mode='Markdown')
-
-@bot.callback_query_handler(func=lambda call: call.data == 'get_exercises')
-def send_exercises(call):
-    chat_id = call.message.chat.id
-
-    exercises_text = """
-🎯 *ПРАКТИЧЕСКИЕ УПРАЖНЕНИЯ:*
-
-• [🍳 Cooking Vocabulary Flashcards](https://fliktop.ru/christina.sedova/playlist/cards/net-nazvaniya/ffe8b6f4-03d9-4d11-a125-770b66d9bea0/?open=true)
-• [✅ Choose the Correct Option](https://fliktop.ru/christina.sedova/playlist/cards/choose-the-correct-option/95dae03b-ca13-4d58-bd9d-48b14b436ed4/?open=true)
-    """
-
-    bot.send_message(chat_id, exercises_text, parse_mode='Markdown')
-
-    # Кнопка для дополнительных материалов
-    materials_text = """
-📚 *Хочешь углубить знания?*
-
-Изучи дополнительные материалы по теме:
-    """
-
-    markup = types.InlineKeyboardMarkup()
-    materials_button = types.InlineKeyboardButton(
-        '🔍 ПОЛУЧИТЬ ДОПОЛНИТЕЛЬНЫЕ МАТЕРИАЛЫ',
-        callback_data='get_materials'
-    )
-    markup.add(materials_button)
-
-    bot.send_message(chat_id, materials_text, reply_markup=markup, parse_mode='Markdown')
-
-@bot.callback_query_handler(func=lambda call: call.data == 'get_materials')
-def send_materials(call):
-    chat_id = call.message.chat.id
-
-    materials_text = """
-🔍 *ДОПОЛНИТЕЛЬНЫЕ МАТЕРИАЛЫ:*
-
-🎥 *YouTube:*
-• [Korean Beef Bulgogi Recipe](https://youtu.be/mhDJNfV7hjk?si=4Ui4A0Ka7_888Rtd)
-• [Easy Cooking Techniques](https://www.youtube.com/watch?v=LYzRXCzxDeY)
-• [Kitchen Vocabulary](https://www.youtube.com/watch?v=HR61Hwt2qUA)
-• [Food Preparation Tips](https://www.youtube.com/watch?v=ZJy1ajvMU1k)
-• [Quick Meal Ideas](https://www.youtube.com/watch?v=OTAwvdRJn6M)
-
-📖 *Статьи:*
-• [Korean Beef Bulgogi Recipe](https://www.recipetineats.com/korean-beef-bulgogi-rice-bowls-the-easy-way/)
-• [Creamy Greek Salad Dressing](https://lisagcooks.com/creamy-greek-salad-dressing/)
-    """
-
-    bot.send_message(chat_id, materials_text, parse_mode='Markdown')
-
-    # Кнопка "Хочу больше уроков" после материалов
-    more_lessons_text = """
-✨ *Понравился урок?*
-
-Хочешь получать такие уроки регулярно по разным темам?
-    """
-
-    markup = types.InlineKeyboardMarkup()
-    more_lessons_button = types.InlineKeyboardButton(
-        '🚀 ХОЧУ БОЛЬШЕ УРОКОВ',
-        callback_data='want_more_lessons'
-    )
-    markup.add(more_lessons_button)
-
-    bot.send_message(chat_id, more_lessons_text, reply_markup=markup, parse_mode='Markdown')
-
-@bot.callback_query_handler(func=lambda call: call.data == 'want_more_lessons')
-def offer_premium_content(call):
-    chat_id = call.message.chat.id
-
+    # Предложение премиум контента
     premium_text = """
 🎊 *ХОЧЕШЬ ЕЩЁ БОЛЬШЕ ПОЛЕЗНОЙ ЛЕКСИКИ?*
 
-В этом мини-уроке ты увидел только 30 слов по кулинарии, но на моём закрытом канале более 70 слов и выражений по каждой теме!
-
-Я приглашаю тебя в мой *ЗАКРЫТЫЙ ТЕЛЕГРАММ КАНАЛ!*
+Присоединяйся к моему *ЗАКРЫТОМУ ТЕЛЕГРАММ КАНАЛУ!*
 
 *Темы, которые уже ждут тебя:*
 ☀️ Summer vocabulary
@@ -484,35 +421,15 @@ def handle_premium_info(call):
 
     bot.send_message(chat_id, premium_info, reply_markup=markup, parse_mode='Markdown')
 
-@bot.callback_query_handler(func=lambda call: call.data == 'restart_test')
-def restart_test(call):
-    chat_id = call.message.chat.id
-    user_data[chat_id] = {
-        'current_question': 0,
-        'score': 0,
-        'answers': []
-    }
-
-    send_question(chat_id)
-
 @bot.message_handler(func=lambda message: True)
 def handle_other_messages(message):
-    if message.text and message.text.startswith('/'):
-        return
-
-    markup = types.InlineKeyboardMarkup()
-    start_button = types.InlineKeyboardButton('🚀 НАЧАТЬ ТЕСТ', callback_data='start_test')
-    markup.add(start_button)
-
-    bot.send_message(
-        message.chat.id,
-        "🎓 *Нажмите кнопку ниже, чтобы начать тест по английскому!*",
-        reply_markup=markup,
-        parse_mode='Markdown'
-    )
+    # Игнорируем все другие сообщения
+    pass
 
 def run_bot():
     print("Бот запущен...")
+    print(f"⚠️ ВНИМАНИЕ: Не забудьте заменить CHANNEL_ID на реальный ID канала")
+    print("Инструкция по получению ID канала в комментариях кода")
     keep_alive()  # Запускаем Flask сервер
     
     while True:
